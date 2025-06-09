@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signal 9 Ensemble</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #111;
+            color: #f0f0f0;
+            line-height: 1.6;
+        }
+        header, section {
+            padding: 2rem;
+            max-width: 1000px;
+            margin: auto;
+        }
+        header {
+            text-align: center;
+        }
+        h1 {
+            font-weight: 500;
+            font-size: 2.5rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .media-item {
+            background: #222;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        iframe, audio {
+            width: 100%;
+            border: none;
+        }
+        #calendar {
+            margin-top: 2rem;
+        }
+        .event-card {
+            border-left: 4px solid #888;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #1b1b1b;
+            border-radius: 4px;
+        }
+        .event-card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.25rem;
+        }
+        .event-card p {
+            margin: 0.25rem 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Signal 9</h1>
+        <p>Modern Music Ensemble | Sound Art | Improvisation</p>
+        <button onclick="document.getElementById('contact').scrollIntoView({ behavior: 'smooth' })">
+            Contact Us
+        </button>
+    </header>
+
+    <section>
+        <h2>Media</h2>
+        <div class="grid">
+            <div class="media-item">
+                <audio controls src="/media/sample1.mp3"></audio>
+                <p>"Improvised Soundscape #1"</p>
+            </div>
+            <div class="media-item">
+                <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" allowfullscreen></iframe>
+                <p>Live at Sonic Fields 2024</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="calendar">
+        <h2>Upcoming Events</h2>
+        <div id="event-list">
+            <p>Loading events...</p>
+        </div>
+        <button onclick="document.getElementById('contact').scrollIntoView({ behavior: 'smooth' })">
+            Contact Us
+        </button>
+    </section>
+
+    <script>
+        async function loadEvents() {
+            const tags = ['signal-9', 'public'];
+            const query = tags.map(tag => `tag=${encodeURIComponent(tag)}`).join('&');
+            const logic = 'or';
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/internal/upcoming-events?${query}&logic=${logic}`);
+                const events = await res.json();
+                const container = document.getElementById('event-list');
+                container.innerHTML = '';
+
+                events.forEach(event => {
+                    const card = document.createElement('div');
+                    card.className = 'event-card';
+
+                    card.innerHTML = `
+                        <h3>${event.title}</h3>
+                        <p><strong>Date:</strong> ${event.event_date}</p>
+                        <p>${event.description}</p>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                document.getElementById('event-list').innerHTML = '<p>Unable to load events at this time.</p>';
+                console.error(err);
+            }
+        }
+
+        loadEvents();
+    </script>
+
+
+<!-- ADD THIS AT THE BOTTOM OF <body> -->
+
+    <section id="contact">
+        <h2>Contact Us</h2>
+        <form id="contact-form">
+            <div class="form-row">
+                <label for="name">Name</label><br />
+                <input type="text" id="name" name="name" required />
+            </div>
+            <div class="form-row">
+                <label for="email">Email</label><br />
+                <input type="email" id="email" name="email" required />
+            </div>
+            <div class="form-row">
+                <label for="message">Message</label><br />
+                <textarea id="message" name="message" rows="5" required></textarea>
+            </div>
+            <div class="g-recaptcha" data-sitekey="6LdvmDcrAAAAAOrqlCl0CaRc31XqodrrNhbQM6K4"></div>
+            <button type="submit">Send</button>
+            <p id="form-status"></p>
+        </form>
+    </section>
+    
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script>
+        document.getElementById('contact-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formStatus = document.getElementById('form-status');
+            const recaptchaResponse = grecaptcha.getResponse();
+    
+            if (!recaptchaResponse) {
+                formStatus.textContent = 'Please complete the reCAPTCHA.';
+                formStatus.className = 'error';
+                return;
+            }
+    
+            const form = e.target;
+            const formData = new FormData(form);
+            formData.append('g-recaptcha-response', recaptchaResponse);
+    
+            try {
+                const response = await fetch("https://script.google.com/macros/s/AKfycbya9hX2-iQj0vI7UAc9mO2t3oikDcocnwIKPvK3yPRP5aUXugTiVlEl4grpZkMkV7cJgA/exec", {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData,
+                });
+    
+                formStatus.textContent = "Message sent! We'll get back to you shortly.";
+                formStatus.className = 'success';
+                form.reset();
+                grecaptcha.reset();
+            } catch (error) {
+                formStatus.textContent = 'Something went wrong. Please try again later.';
+                formStatus.className = 'error';
+                console.error(error);
+            }
+        });
+    </script>
+    
+
+    <style>
+        #contact {
+            margin-top: 3rem;
+            padding: 2rem;
+            background-color: #1a1a1a;
+            border-top: 1px solid #333;
+            max-width: 800px;
+        }
+        #contact h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+        }
+        #contact-form .form-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+        #contact-form textarea {
+            width: 100%;
+            padding: 0.6rem;
+            background-color: #2a2a2a;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        #contact-form button {
+            padding: 0.75rem 1.5rem;
+            background-color: #444;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #form-status {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: #8f8;
+        }
+        #form-status.error {
+            color: #f88;
+        }
+        #form-status.success {
+            color: #8f8;
+        }
+        #contact-form .form-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0.5rem;
+        }
+        #contact-form label {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        #contact-form input,
+        #contact-form textarea {
+            padding: 0.4rem;
+            font-size: 0.9rem;
+        }
+        #contact-form textarea {
+            resize: none;
+        }
+        #contact-form button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        /* Removed duplicate button styles */
+        .g-recaptcha {
+            margin: 1rem 0;
+        }
+        .form-row {
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+        .form-row label {
+            margin-bottom: 0.5rem;
+        }
+        .g-recaptcha {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        .form-row textarea {
+            width: 100%;
+            padding: 0.5rem;
+            background-color: #222;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        .form-row input:focus,
+        .form-row textarea:focus {
+            border-color: #888;
+            outline: none;
+        }
+        .form-row textarea {
+            resize: vertical;
+        }
+        .form-row button {
+            margin-top: 1rem;
+            background-color: #444;
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+        /* Removed duplicate button:hover style */
+        }
+        .form-row button:hover {
+            background-color: #666;
+        }
+        .form-row button:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #888;
+        }
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #8f8;
+        }
+        #form-status.error {
+            color: #f88;
+        }
+        #form-status.success {
+            color: #8f8;
+        }   
+    </style>
+</body>
+</html>

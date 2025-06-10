@@ -1,0 +1,46 @@
+# Node.js
+# In .gitignore (root or proxy/.gitignore)
+proxy/node_modules/
+proxy/.env
+proxy/.cache/
+proxy/coverage/
+# Logs
+logs/
+*.log
+*.log.*
+
+# Environment and config
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+
+# Coverage and test reports
+coverage/
+.nyc_output/
+*.lcov
+
+# OS/System
+.DS_Store
+Thumbs.db
+
+# VS Code / IDE settings
+.vscode/
+.idea/
+*.swp
+
+# Local storage or temp files
+storage/*.json
+!storage/sample-*.json   # allow committed sample data
+tmp/
+*.bak
+
+# Proxy-specific
+proxy/node_modules/
+proxy/.env
+proxy/.cache/
+proxy/coverage/
+
+# Electron (if applicable in Signal-9)
+

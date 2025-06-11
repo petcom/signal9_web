@@ -1,8 +1,9 @@
- import express from 'express';
+import express from 'express';
 import fetch from 'node-fetch';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { LRUCache } from 'lru-cache';
+import ms from 'ms'; // Install with: npm install ms
 
 dotenv.config();
 
@@ -12,13 +13,26 @@ const PORT = process.env.PORT || 8080;
 // Config from .env
 const TARGET_URL = process.env.TARGET_URL;          // e.g. http://localhost:3000
 const API_PATH = process.env.API_PATH || '/api';    // e.g. /api
-const LOGIN_PATH = process.env.LOGIN_PATH || '/login';
+const LOGIN_PATH = process.env.LOGIN_PATH || '/jwtlogin';
 const LOGIN_USER = process.env.LOGIN_USER;
 const LOGIN_PASS = process.env.LOGIN_PASS;
 
+console.log('[ENV]', {
+  PORT,
+  TARGET_URL,
+  API_PATH,
+  LOGIN_PATH,
+  LOGIN_USER,
+  LOGIN_PASS,
+});
+
 // Derived URLs
 const FULL_API_URL = `${TARGET_URL}${API_PATH}`;
-const FULL_LOGIN_URL = `${TARGET_URL}${LOGIN_PATH}`;
+const FULL_LOGIN_URL = `${TARGET_URL}${API_PATH}${LOGIN_PATH}`;
+
+console.log('[ENV]', {
+  FULL_LOGIN_URL
+});
 
 // LRU Cache config
 const cache = new LRUCache({
@@ -28,7 +42,6 @@ const cache = new LRUCache({
     return Buffer.byteLength(JSON.stringify(value), 'utf8');
   }
 });
-
 
 let jwtToken = null;
 let tokenExpiry = null;
@@ -54,8 +67,20 @@ async function getToken() {
   }
 
   const data = await response.json();
+
+  if (!data.token) {
+    throw new Error('No token received from auth server');
+  }
+
   jwtToken = data.token;
-  tokenExpiry = Date.now() + (data.expiresIn || 3600) * 1000 - 60000; // refresh 1 min early
+
+  // Convert expiresIn (e.g. "10m") to milliseconds
+  const ttlMs = typeof data.expiresIn === 'string'
+    ? ms(data.expiresIn)
+    : (data.expiresIn || 3600) * 1000;
+
+  tokenExpiry = Date.now() + ttlMs - 60000; // refresh 1 minute early
+
   return jwtToken;
 }
 

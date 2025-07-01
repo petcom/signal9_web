@@ -209,12 +209,16 @@
 
     <section id="calendar">
         <h2>Upcoming Events</h2>
-        <div id="event-list">
-            <p>Loading events...</p>
+        <div id="upcoming-events">
+            <p>Loading upcoming events...</p>
         </div>
-        <button onclick="document.getElementById('contact').scrollIntoView({ behavior: 'smooth' })">
-            Contact Us
-        </button>
+    </section>
+
+    <section id="previous-calendar">
+        <h2>Previous Events</h2>
+        <div id="previous-events">
+            <p>Loading previous events...</p>
+        </div>
     </section>
 
     <section id="contact">
@@ -239,100 +243,117 @@
     </section>
 
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <script>
-        const EVENTS_PROXY_URL = 'http://localhost:8180/proxy-api/events/upcoming';
-        const DEFAULT_TAGS = 'signal-9,sonar,public';
+<script>
+  const EVENTS_PROXY_URL = 'http://localhost:8180/proxy-api/events/query';
+  const DEFAULT_TAGS = 'signal-9,sonar,public';
 
-        async function loadEvents() {
-            const container = document.getElementById('event-list');
-            container.innerHTML = '<p>Loading events...</p>';
+  async function loadEvents() {
+    loadUpcomingEvents();
+    loadPreviousEvents();
+  }
 
-            try {
-                const tags = DEFAULT_TAGS
-                    .split(',')
-                    .map(t => t.trim())
-                    .filter(Boolean)
-                    .join(',');
+  async function loadUpcomingEvents() {
+    const container = document.getElementById('upcoming-events');
+    container.innerHTML = '<p>Loading upcoming events...</p>';
 
-                const url = `${EVENTS_PROXY_URL}?tags=${encodeURIComponent(tags)}&logic=or`;
+    try {
+      const tags = DEFAULT_TAGS.split(',').map(t => t.trim()).filter(Boolean);
 
-                const res = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+      const res = await fetch(EVENTS_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tags: tags,
+          tag_logic: 'or',
+          startDate: new Date().toISOString().split('T')[0] // today
+        })
+      });
 
-                if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      const events = await res.json();
+      container.innerHTML = '';
 
-                const events = await res.json();
+      if (!events.length) {
+        container.innerHTML = '<p>No upcoming events found.</p>';
+        return;
+      }
 
-                container.innerHTML = '';
+      events.forEach(event => {
+        container.appendChild(buildEventCard(event));
+      });
+    } catch (err) {
+      console.error('[Page] Failed to load upcoming events:', err);
+      container.innerHTML = '<p>Unable to load upcoming events.</p>';
+    }
+  }
 
-                if (!events.length) {
-                    container.innerHTML = '<p>No upcoming events found.</p>';
-                    return;
-                }
+  async function loadPreviousEvents() {
+    const container = document.getElementById('previous-events');
+    container.innerHTML = '<p>Loading previous events...</p>';
 
-                events.forEach(event => {
-                    const card = document.createElement('div');
-                    card.className = 'event-card';
+    try {
+      const tags = DEFAULT_TAGS.split(',').map(t => t.trim()).filter(Boolean);
 
-                    const thumbnail = event.thumb_image_url
-                        ? `<img src="${event.thumb_image_url}" alt="${event.title} thumbnail" />`
-                        : '';
+      // Get dates for the last 2 weeks
+      const today = new Date();
 
-                    card.innerHTML = `
-                        ${thumbnail}
-                        <div class="event-card-content">
-                            <h3>${event.title}</h3>
-                            <p><strong>Date:</strong> ${new Date(event.event_date).toLocaleDateString()}</p>
-                            <p>${event.description}</p>
-                        </div>
-                    `;
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
 
-                    container.appendChild(card);
-                });
-            } catch (error) {
-                console.error('[Page] Failed to load events:', error);
-                container.innerHTML = '<p>Unable to load events at this time.</p>';
-            }
-        }
+      const pastDate = new Date();
+      pastDate.setDate(today.getDate() - 30);
 
-        document.getElementById('contact-form').addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const formStatus = document.getElementById('form-status');
-            const recaptchaResponse = grecaptcha.getResponse();
+      const res = await fetch(EVENTS_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tags: tags,
+          tag_logic: 'or',
+          startDate: pastDate.toISOString().split('T')[0],
+          endDate: yesterday.toISOString().split('T')[0]
+        })
+      });
 
-            if (!recaptchaResponse) {
-                formStatus.textContent = 'Please complete the reCAPTCHA.';
-                formStatus.className = 'error';
-                return;
-            }
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      const events = await res.json();
+      container.innerHTML = '';
 
-            const form = e.target;
-            const formData = new FormData(form);
-            formData.append('g-recaptcha-response', recaptchaResponse);
+      if (!events.length) {
+        container.innerHTML = '<p>No previous events found.</p>';
+        return;
+      }
 
-            try {
-                await fetch("https://script.google.com/macros/s/AKfycbya9hX2-iQj0vI7UAc9mO2t3oikDcocnwIKPvK3yPRP5aUXugTiVlEl4grpZkMkV7cJgA/exec", {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: formData,
-                });
+      events.forEach(event => {
+        container.appendChild(buildEventCard(event));
+      });
+    } catch (err) {
+      console.error('[Page] Failed to load previous events:', err);
+      container.innerHTML = '<p>Unable to load previous events.</p>';
+    }
+  }
 
-                formStatus.textContent = "Message sent! We'll get back to you shortly.";
-                formStatus.className = 'success';
-                form.reset();
-                grecaptcha.reset();
-            } catch (error) {
-                formStatus.textContent = 'Something went wrong. Please try again later.';
-                formStatus.className = 'error';
-                console.error(error);
-            }
-        });
+  function buildEventCard(event) {
+    const card = document.createElement('div');
+    card.className = 'event-card';
 
-        loadEvents();
-    </script>
+    const thumbnail = event.thumb_image_url
+      ? `<img src="${event.thumb_image_url}" alt="${event.title} thumbnail" />`
+      : '';
+
+    card.innerHTML = `
+      ${thumbnail}
+      <div class="event-card-content">
+        <h3>${event.title}</h3>
+        <p><strong>Date:</strong> ${new Date(event.event_date).toLocaleDateString()}</p>
+        <p>${event.description}</p>
+      </div>
+    `;
+    return card;
+  }
+
+  loadEvents();
+</script>
+
+
 </body>
 </html>

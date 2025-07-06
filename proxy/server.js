@@ -84,6 +84,14 @@ async function getToken() {
   return jwtToken;
 }
 
+// Clear cache manually
+app.get('/proxy-api/cache/clear', (req, res) => {
+  cache.clear();
+  console.log('[CACHE] Manually cleared');
+  res.json({ message: 'Cache cleared successfully' });
+});
+
+// the rest of the forwarded proxy
 app.use('/proxy-api', async (req, res) => {
   try {
     const cacheKey = `${req.method}:${req.originalUrl}`;
@@ -132,12 +140,7 @@ app.use('/proxy-api', async (req, res) => {
   }
 });
 
-// Clear cache manually
-app.get('/proxy-api/cache/clear', (req, res) => {
-  cache.clear();
-  console.log('[CACHE] Manually cleared');
-  res.json({ message: 'Cache cleared successfully' });
-});
+
 
 app.listen(PORT, () => {
   console.log(`🔐 Secure proxy with LRU cache running at http://localhost:${PORT}/proxy-api`);
